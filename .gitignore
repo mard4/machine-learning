@@ -1,7 +1,18 @@
 my_env/
 
+.ipynb_checkpoints
+
 __pycache__/
 *.pyc
 *.pyo
 
 *.npy
+
+wandb/
+*.pt
+*.pth
+*.keras
+
+logs/
+
+core*

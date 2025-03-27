@@ -2,12 +2,16 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
+from tensorflow.keras.losses import MeanSquaredError
 import os
+import random
 
-MODEL_PATH = "saved_models/dicewars_rl_model.h5"
+#MODEL_PATH = "./saved_models/dicewars_rl_model.h5"
+MODEL_PATH = "./saved_models/dicewars_rl_model.keras"
 
 class RLDicewarsAgent:
     def __init__(self):
+        print("Inizializzazione agente RL")
         self.input_dim = 60  # <-- n* di aree sullla mappa
         self.output_dim = 50  # <-- scegli in base a quante azioni possibili consideri
         self.model = self.build_model()
@@ -20,7 +24,7 @@ class RLDicewarsAgent:
             layers.Dense(64, activation='relu'),
             layers.Dense(self.output_dim, activation='linear')
         ])
-        model.compile(optimizer='adam', loss='mse')
+        model.compile(optimizer='adam', loss=MeanSquaredError())
         return model
     
     def save_model(self, path=MODEL_PATH):
@@ -77,18 +81,18 @@ class RLDicewarsAgent:
                         actions.append((from_area, to_area))
         return actions
 
-    def select_action(self, grid, match_state):
-        """
-        Metodo chiamato dal player esterno per scegliere la mossa
-        """
+    def select_action(self, grid, match_state, epsilon=0.1):
         state_vec = self.encode_state(grid, match_state)
-        q_values = self.model.predict(state_vec[None, :], verbose=0)[0]
         valid_actions = self.get_valid_actions(grid, match_state)
 
-        # Scegli la migliore azione valida
+        if np.random.rand() < epsilon:
+            return random.choice(valid_actions)
+
+        q_values = self.model.predict(state_vec[None, :], verbose=0)[0]
         action_scores = q_values[:len(valid_actions)]
         best_idx = np.argmax(action_scores)
         return valid_actions[best_idx]
+
     
     def train_step(self, state_vec, action_taken, reward, gamma=0.99):
         state_vec = state_vec[None, :]  # batch format

@@ -13,6 +13,10 @@ import os
 import matplotlib.pyplot as plt
 from collections import deque
 
+if tf.config.list_physical_devices('GPU'):
+    print("cuda ok")
+else:
+    print('cpu')
 
 NUM_EPISODES = 1000
 SAVE_MODEL_PATH = "./saved_models/dicewars_rl_model.h5"
