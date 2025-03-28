@@ -6,8 +6,10 @@ from tensorflow.keras.losses import MeanSquaredError
 import os
 import random
 
-#MODEL_PATH = "./saved_models/dicewars_rl_model.h5"
-MODEL_PATH = "./saved_models/dicewars_rl_model_new.keras"
+## jupyter
+#MODEL_PATH = "./saved_models/dicewars_rl_model_new.keras"
+#qua
+MODEL_PATH = "C:/Users/Mardeen/Desktop/UT/machine-learning/Project_Mardeen/saved_models/dicewars_rl_model_new_pc.keras"
 
 class RLDicewarsAgent:
     def __init__(self):
@@ -19,20 +21,20 @@ class RLDicewarsAgent:
         self.build_action_mapping()  # inizializza il mapping
         #self.output_dim = len(self.index_to_action)  # <-- imposta in base alle azioni reali
         self.model = self.build_model()
-        self.load_model()
+        #self.load_model()
         
     def build_model(self):
-        with tf.device('/GPU:0'):  ### aa commentare se non abbiamo gpu
-            model = keras.Sequential([
-                        layers.Input(shape=(self.input_dim,)),         # es: 60
-                        layers.Dense(256, activation='relu'),
-                        layers.BatchNormalization(),                   # migliora la stabilità
-                        layers.Dense(128, activation='relu'),
-                        layers.Dropout(0.2),                           # evita overfitting su dati poveri
-                        layers.Dense(64, activation='relu'),
-                        layers.Dense(self.output_dim, activation='linear')
-                    ])
-            model.compile(optimizer=optimizers.Adam(learning_rate=1e-4), loss=MeanSquaredError())
+        #with tf.device('/GPU:0'):  ### aa commentare se non abbiamo gpu
+        model = keras.Sequential([
+                    layers.Input(shape=(self.input_dim,)),        
+                    layers.Dense(256, activation='relu'),
+                    layers.BatchNormalization(),                   # migliora la stabilità
+                    layers.Dense(128, activation='relu'),
+                    layers.Dropout(0.2),                           # evita overfitting su dati poveri
+                    layers.Dense(64, activation='relu'),
+                    layers.Dense(self.output_dim, activation='linear')
+                ])
+        model.compile(optimizer=optimizers.Adam(learning_rate=1e-4), loss=MeanSquaredError())
         return model
     
     def save_model(self, path=MODEL_PATH):

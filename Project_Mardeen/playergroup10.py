@@ -23,7 +23,6 @@ class Player(player.Player):
         self.playername='Group 10'
         print(f'Initializing player from: {__file__} with name:',self.playername)
         
-        ##self.model = self.build_model()
         self.agent = RLDicewarsAgent()
         
     def get_attack_areas(self, grid, match_state):
