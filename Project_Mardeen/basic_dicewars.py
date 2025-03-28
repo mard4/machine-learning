@@ -1,6 +1,6 @@
 from dicewars.match import Match
 from dicewars.game import Game
-from dicewars.player import DefaultPlayer, AgressivePlayer, RandomPlayer, WeakerPlayerAttacker
+from dicewars.player import DefaultPlayer, AgressivePlayer, RandomPlayer, WeakerPlayerAttacker, PassivePlayer
 from importlib import import_module
 
 # always playing with 4 players in the game
@@ -15,7 +15,7 @@ PlayerX = import_module('playergroup10').Player()
 #players = [DefaultPlayer(), AgressivePlayer(), RandomPlayer(), WeakerPlayerAttacker()]
 #players = [PlayerX, AgressivePlayer(), RandomPlayer(), WeakerPlayerAttacker()]
 #players = [PlayerX, AgressivePlayer(), AgressivePlayer(),AgressivePlayer()]
-players = [PlayerX,WeakerPlayerAttacker(),RandomPlayer(),AgressivePlayer()]
+players = [PlayerX,WeakerPlayerAttacker(),WeakerPlayerAttacker(),PassivePlayer()]
 playernames=[]
 for i in range(len(players)):
     playernames.append(players[i].playername)
