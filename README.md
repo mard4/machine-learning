@@ -38,4 +38,4 @@ in `rl_training.py`
   - Percentuale di vittorie
   - Progressione del reward
 - Modifica iperparametri (learning rate, gamma, ecc.)
-- Testa contro altri agenti: `AgressivePlayer`, `DefaultPlayer`, ecc. (o anche contro se stess0?)
+- Testa contro altri agenti: `AgressivePlayer`, `DefaultPlayer`, ecc. (o anche contro se stesso?)
