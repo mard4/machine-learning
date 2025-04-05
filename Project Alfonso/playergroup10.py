@@ -26,7 +26,7 @@ class Player(player.Player):
         self.agent = RLDicewarsAgent()
         
     def get_attack_areas(self, grid, match_state):
-        return self.agent.select_action(grid, match_state)
+        return self.agent.select_action(grid, match_state, epsilon=0)
         
 
     # def get_attack_areas(self, grid, match_state):
