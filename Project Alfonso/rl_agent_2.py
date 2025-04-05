@@ -16,8 +16,8 @@ class RLDicewarsAgent:
         self.grid = Grid()
         self.input_dim = 21  
         self.output_dim = 100  
-        self.model = self.build_model()
-        #self.load_model()
+        #self.model = self.build_model()
+        self.load_model()
         
     def build_model(self):
         model = keras.Sequential([
@@ -126,14 +126,14 @@ class RLDicewarsAgent:
         def sort_key(action):
             from_area, to_area = action
             
-            opponent_neighbor_count = 0
-            opponent_dice = 0
-            for neighbor in grid.areas[from_area].neighbors:
-                if match_state.area_players[neighbor] != match_state.player:  # Se il vicino è di un avversario
-                    opponent_neighbor_count += 1
-                    opponent_dice += match_state.area_num_dice[neighbor]
+            # opponent_neighbor_count = 0
+            # opponent_dice = 0
+            # for neighbor in grid.areas[from_area].neighbors:
+            #     if match_state.area_players[neighbor] != match_state.player:  # Se il vicino è di un avversario
+            #         opponent_neighbor_count += 1
+            #         opponent_dice += match_state.area_num_dice[neighbor]
                 
-            return (area_num_dice[from_area], area_num_dice[to_area], opponent_neighbor_count/len(grid.areas[from_area].neighbors), opponent_dice)
+            return (len(grid.areas[from_area].neighbors), area_num_dice[from_area], area_num_dice[to_area], len(grid.areas[to_area].neighbors))
             # return (from_area_counts[from_area], area_num_dice[from_area], to_area_counts[to_area], area_num_dice[to_area])
         
         valid_actions_sorted = sorted(actions[1:], key=sort_key, reverse=True)
@@ -157,7 +157,7 @@ class RLDicewarsAgent:
             best_action_idx = np.argmax([q_values[i] for i in range(min(self.output_dim, len(valid_actions)))])
             return best_action_idx, valid_actions[best_action_idx]
 
-    def train_batch(self, states, actions_indices, actions, rewards, next_states, dones, gamma=0.99):
+    def train_batch(self, states, actions_indices, actions, rewards, next_states, dones, gamma=0.1):
         states = np.array(states)
         next_states = np.array(next_states)
 
