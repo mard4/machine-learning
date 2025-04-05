@@ -16,14 +16,14 @@ from rl_agent_2 import RLDicewarsAgent, ReplayBuffer
 
 
 # Configurazione
-NUM_EPISODES = 101
+NUM_EPISODES = 500
 SAVE_MODEL_PATH = "D:/PhD utwente/courses/Machine learning/Exercises/dicewars-env-v1/saved_models/dicewars_rl_model.keras"
 os.makedirs(os.path.dirname(SAVE_MODEL_PATH), exist_ok=True)
 
 # Parametri di training
-BUFFER_SIZE = 10000
+BUFFER_SIZE = 1000
 BATCH_SIZE = 128
-TRAIN_EVERY = 10  # Allena il modello ogni 10 episodi
+TRAIN_EVERY = 5  # Allena il modello ogni 10 episodi
 EVAL_EVERY = 50  # Valuta l'agente ogni 50 episodi
 SAVE_EVERY = 30  # Salva il modello ogni 30 episodi
 
@@ -32,30 +32,44 @@ buffer = ReplayBuffer(max_size=BUFFER_SIZE)
 agent = RLDicewarsAgent()
 
 # Avversari (possono essere cambiati)
-other_players = [RandomPlayer(), RandomPlayer(), RandomPlayer()]
+other_players = [DefaultPlayer(), DefaultPlayer(), DefaultPlayer()]
 
 # Variabili per il monitoraggio delle prestazioni
 win_history = []
 reward_history = []
-moving_avg = deque(maxlen=50)  # Media mobile delle ultime 50 partite
+moving_avg = deque(maxlen=100)  # Media mobile delle ultime 50 partite
 
 def calculate_step_reward(prev_state, new_state, player_idx):
     """
     Reward intermedio basato su: conquiste, perdite, crescita di dadi.
     """
     reward = 0
-    prev_areas = len(prev_state.player_areas[player_idx])
-    new_areas = len(new_state.player_areas[player_idx])
-    reward += (new_areas - prev_areas) * 0.4
+    prev_areas = prev_state.player_num_areas[player_idx]
+    new_areas = new_state.player_num_areas[player_idx]
+    reward += (new_areas - prev_areas) * 0.04
 
-    prev_dice = prev_state.player_num_dice[player_idx]
-    new_dice = new_state.player_num_dice[player_idx]
+    prev_dice = prev_state.player_num_dice[player_idx]/prev_areas
+    new_dice = new_state.player_num_dice[player_idx]/new_areas
     reward += (new_dice - prev_dice) * 0.04
+    
+    prev_cl = prev_state.player_max_size[player_idx]
+    new_cl = new_state.player_max_size[player_idx]
+    reward += (new_cl - prev_cl) * 0.04
+    
+    prev_alive = sum(1 for a in prev_state.player_num_areas if a > 0)
+    new_alive = sum(1 for a in new_state.player_num_areas if a > 0)
+    
+    if new_alive < prev_alive:
+        reward += 0.5
+    
+    
+    # if prev_areas == new_areas and prev_cl == new_cl:
+    #    reward -= 0.02
 
     return reward
 
 def calculate_final_reward(winner, player_idx):
-    return 20.0 if winner == player_idx else -20.0
+    return 20.0 if winner == player_idx else -10.0
 
 def evaluate_agent(agent, num_matches=10, other_players=other_players):
     """
@@ -72,7 +86,7 @@ def evaluate_agent(agent, num_matches=10, other_players=other_players):
             current_player = state.player
 
             if current_player == 0:
-                action = agent.select_action(grid, state, epsilon=0.0)
+                action_idx , action = agent.select_action(grid, state, epsilon=0.0)
             else:
                 action = players[current_player].get_attack_areas(grid, state)
 
@@ -94,7 +108,7 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
     match = Match(game)
     grid, state = match.game.grid, match.state
 
-    epsilon = max(0.01, 0.1 - episode / NUM_EPISODES)  # Decrescente
+    epsilon = max(0.01, 0.7 - episode / NUM_EPISODES)  # Decrescente
 
     history = []
 
@@ -103,7 +117,7 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
         prev_state = state  
 
         if current_player == 0:
-            action = agent.select_action(grid, state, epsilon=epsilon)
+            action_idx, action = agent.select_action(grid, state, epsilon=epsilon)
             state_vec = agent.encode_state(grid, state)
         else:
             action = players[current_player].get_attack_areas(grid, state)
@@ -116,7 +130,10 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
             state_vec = agent.encode_state(grid, prev_state)
             next_state_vec = agent.encode_state(grid, state)
             history.append((state_vec, action, reward))
-            buffer.add(state_vec, action, reward, next_state_vec, done)
+            if done:
+                buffer.add(state_vec, action_idx, action, reward + calculate_final_reward(match.winner, player_idx=0), next_state_vec, done)
+            else:
+                buffer.add(state_vec, action_idx, action, reward, next_state_vec, done)
 
     # Calcola il reward finale e aggiorna le statistiche
     final_reward = calculate_final_reward(match.winner, player_idx=0)
@@ -129,8 +146,8 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
 
     # Allena il modello se il buffer ha abbastanza campioni
     if (episode + 1) % TRAIN_EVERY == 0 and len(buffer) >= BATCH_SIZE:
-        states, actions, rewards, next_states, dones = buffer.sample(BATCH_SIZE)
-        agent.train_batch(states, actions, rewards, next_states, dones)
+        states, actions_idx, actions, rewards, next_states, dones = buffer.sample(BATCH_SIZE)
+        agent.train_batch(states, actions_idx, actions, rewards, next_states, dones)
 
     # Stampa informazioni di progresso
     print(f"Episode {episode + 1}/{NUM_EPISODES} | Reward: {episode_reward:.2f} | Win Rate: {np.mean(moving_avg):.2f} | Winner: {'Agent' if match.winner == 0 else 'Opponent'}")
