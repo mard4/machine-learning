@@ -213,16 +213,19 @@ class RLDicewarsAgent:
         #print(q_values.shape)
         q_next = self.model.predict(next_states, verbose=0)
         targets = q_values.copy()
+        
+        losses = []
 
         for i, (action_idx, reward, done) in enumerate(zip(actions_indices, rewards, dones)):
+            old_q = q_values[i, action_idx]
             if done:
                 targets[i, action_idx] = (1-alpha)*q_values[i, action_idx] + alpha*reward
             else:
                 targets[i, action_idx] = (1-alpha)*q_values[i, action_idx] + alpha*(reward + gamma * np.max(q_next[i]))
-                
-
+            losses.append((targets[i, action_idx] - old_q) ** 2)
 
         self.model.fit(states, targets, verbose=0)
+        return np.mean(losses)
         
         
     #### ==============================
