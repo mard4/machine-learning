@@ -30,7 +30,7 @@ class RLDicewarsAgent:
             layers.Dense(128, activation='relu'),
             layers.Dense(self.output_dim, activation='linear')
         ])
-        model.compile(optimizer=optimizers.Adam(learning_rate=1e-9), loss=MeanSquaredError())
+        model.compile(optimizer=optimizers.Adam(learning_rate=1e-1), loss=MeanSquaredError())
         return model
     
     def save_model(self, path=MODEL_PATH):
