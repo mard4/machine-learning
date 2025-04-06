@@ -7,12 +7,34 @@ import datetime
 import matplotlib.pyplot as plt
 from collections import deque
 from tqdm import tqdm
+import csv
 
 from dicewars.match import Match
 from dicewars.game import Game
 from dicewars.player import DefaultPlayer, AgressivePlayer, RandomPlayer, WeakerPlayerAttacker, PassivePlayer
 from dicewars.grid import Grid
 from rl_agent_2 import RLDicewarsAgent, ReplayBuffer
+# CREAZIONE CARTELLA LOG
+BASE_LOG_DIR = os.path.dirname("./")
+CSV_LOG_DIR = os.path.join(BASE_LOG_DIR, "logs")
+os.makedirs(CSV_LOG_DIR, exist_ok=True)
+# CSV: Episodi
+episode_log_file = open(os.path.join(CSV_LOG_DIR, "episode_logs.csv"), mode="w", newline='')
+episode_writer = csv.writer(episode_log_file)
+episode_writer.writerow(["Episode", "Reward", "Win", "MovingAvg", "Winner"])
+# CSV: Descrittori
+descriptor_log_file = open(os.path.join(CSV_LOG_DIR, "descriptor_logs.csv"), mode="w", newline='')
+descriptor_writer = csv.writer(descriptor_log_file)
+descriptor_writer.writerow(["Episode", "BorderStrength", "DiceAdvantage"])
+# CSV: Q-values
+qvalue_log_file = open(os.path.join(CSV_LOG_DIR, "qvalue_logs.csv"), mode="w", newline='')
+qvalue_writer = csv.writer(qvalue_log_file)
+qvalue_writer.writerow(["Episode", "Q_Max", "Q_Mean"])
+# CSV: Evaluation win rate
+evaluation_log_file = open(os.path.join(CSV_LOG_DIR, "evaluation_logs.csv"), mode="w", newline='')
+evaluation_writer = csv.writer(evaluation_log_file)
+evaluation_writer.writerow(["Episode", "EvalWinRate"])
+
 
 
 # Configurazione
@@ -23,7 +45,7 @@ os.makedirs(os.path.dirname(SAVE_MODEL_PATH), exist_ok=True)
 # Parametri di training
 BUFFER_SIZE = 1000
 BATCH_SIZE = 128
-TRAIN_EVERY = 5  # Allena il modello ogni n episodi
+TRAIN_EVERY = 10  # Allena il modello ogni n episodi
 EVAL_EVERY = 30  # Valuta l'agente ogni n episodi
 SAVE_EVERY = 30  # Salva il modello ogni n episodi
 
@@ -170,15 +192,39 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
     final_reward = calculate_final_reward(match.winner, player_idx=0)
     episode_reward = sum(r for _, _, r in history) + final_reward
     reward_history.append(episode_reward)
-
+    
     won = 1 if match.winner == 0 else 0
     win_history.append(won)
     moving_avg.append(won)
+    
+    ### === logs
+    # Salva episodio
+    episode_writer.writerow([
+        episode + 1,
+        round(episode_reward, 2),
+        won,
+        round(np.mean(moving_avg), 2),
+        "Agent" if match.winner == 0 else "Opponent"
+    ])
+    # Salva descrittori (solo se sei current_player == 0)
+    descriptor_writer.writerow([
+        episode + 1,
+        round(state_vec[-2], 4),  # Border strength
+        round(state_vec[-1], 4)   # Dice advantage
+    ])
+    #### === logs
 
     # Allena il modello se il buffer ha abbastanza campioni
     if (episode + 1) % TRAIN_EVERY == 0 and len(buffer) >= BATCH_SIZE:
         states, actions_idx, actions, rewards, next_states, dones = buffer.sample(BATCH_SIZE)
-        agent.train_batch(states, actions_idx, actions, rewards, next_states, dones)
+        loss = agent.train_batch(states, actions_idx, actions, rewards, next_states, dones)
+
+        # Estrazione Q-values del primo stato
+        q_values = agent.model.predict(states, verbose=0)[0]
+        q_max = np.max(q_values)
+        q_mean = np.mean(q_values)
+        # Logga Q-values medi
+        qvalue_writer.writerow([episode + 1, round(q_max, 4), round(q_mean, 4)])
 
     # Stampa informazioni di progresso
     print(f"Episode {episode + 1}/{NUM_EPISODES} | Reward: {episode_reward:.2f} | Win Rate: {np.mean(moving_avg):.2f} | Winner: {'Agent' if match.winner == 0 else 'Opponent'}")
@@ -190,6 +236,11 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
     # Valutazione periodica dell'agente
     if (episode + 1) % EVAL_EVERY == 0:
         eval_win_rate = evaluate_agent(agent, num_matches=10, other_players=other_players)
+        evaluation_writer.writerow([episode + 1, round(eval_win_rate, 4)])
 
 # Stampa il tempo totale di esecuzione
 print("Training completed in", round(time.time() - start_time, 2), "seconds")
+episode_log_file.close()
+descriptor_log_file.close()
+qvalue_log_file.close()
+evaluation_log_file.close()
