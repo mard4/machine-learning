@@ -181,6 +181,7 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
                                            took_action=took_action, valid_actions=valid_actions)
             done = match.winner != -1
             state_vec = agent.encode_state(grid, prev_state)
+            last_agent_state_vec = state_vec.copy()  # SALVA QUESTO PER I LOG SUCCESSIVI
             next_state_vec = agent.encode_state(grid, state)
             history.append((state_vec, action, reward))
             if done:
@@ -209,8 +210,8 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
     # Salva descrittori (solo se sei current_player == 0)
     descriptor_writer.writerow([
         episode + 1,
-        round(state_vec[-2], 4),  # Border strength
-        round(state_vec[-1], 4)   # Dice advantage
+        round(last_agent_state_vec[-2], 4),
+        round(last_agent_state_vec[-1], 4)
     ])
     #### === logs
 
