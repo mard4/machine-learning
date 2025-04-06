@@ -8,13 +8,13 @@ import random
 import os
 from collections import Counter
 
-MODEL_PATH = "D:/PhD utwente/courses/Machine learning/Exercises/dicewars-env-v1/saved_models/dicewars_rl_model.keras"
+MODEL_PATH = os.path.join("saved_models", "dicewars_rl_model_vsrandom_2.keras")
 
 class RLDicewarsAgent:
     def __init__(self):
         print("Initialized RL agent")
         self.grid = Grid()
-        self.input_dim = 21  
+        self.input_dim = 22  
         self.output_dim = 57  
         #self.model = self.build_model()
         self.load_model()
@@ -38,10 +38,15 @@ class RLDicewarsAgent:
 
     def load_model(self, path=MODEL_PATH):
         if os.path.exists(path):
-            self.model = tf.keras.models.load_model(path)
-            print(f"[MODEL] Caricato da: {path}")
+            try:
+                self.model = tf.keras.models.load_model(path)
+                print(f"[MODEL] Caricato da: {path}")
+            except Exception as e:
+                print(f"[MODEL] ERRORE nel caricamento, ricreo modello da zero. Errore: {e}")
+                self.model = self.build_model()
         else:
-            print(f"[MODEL] Nessun file trovato in: {path}, si parte da zero.")
+            print(f"[MODEL] Nessun file trovato in: {path}, creo nuovo modello.")
+            self.model = self.build_model()
             
     
     def encode_state(self, grid, match_state):  # da rivedere, usare descrittori
@@ -96,7 +101,20 @@ class RLDicewarsAgent:
         
         enemy_borders = np.array([enemy_borders / Grid.DEFAULT_MAX_NUM_AREAS])
 
-        state_vec = np.concatenate([dice, areas, clusters, max_dice_vec, min_dice_vec, enemy_borders])
+        
+        # descrittore
+        b_strength = self.border_strength_ratio(grid, match_state)
+        
+        ##state_vec = np.concatenate([dice, areas, clusters, max_dice_vec, min_dice_vec, enemy_borders])
+        state_vec = np.concatenate([
+                    dice,
+                    areas,
+                    clusters,
+                    max_dice_vec,
+                    min_dice_vec,
+                    enemy_borders,
+                    [b_strength]    # se b_strength è un singolo valore
+                    ])
         return state_vec
     
 
@@ -201,6 +219,51 @@ class RLDicewarsAgent:
 
 
         self.model.fit(states, targets, verbose=0)
+        
+        
+    #### ==============================
+    ### Descrittori
+    def border_strength_ratio(self, grid, match_state):
+        # Recuperi l'indice del giocatore che sta per agire
+        player_idx = match_state.player
+        
+        total = 0
+        count = 0
+        area_dice = match_state.area_num_dice
+        player_areas = match_state.player_areas[player_idx]
+        owner = match_state.area_players
+
+        for from_area in player_areas:
+            from_dice = area_dice[from_area]
+            for to_area in grid.areas[from_area].neighbors:
+                if owner[to_area] != player_idx:
+                    to_dice = area_dice[to_area]
+                    total += (from_dice - to_dice)
+                    count += 1
+
+        return total / count if count > 0 else 0
+
+
+        # def dice_entropy(self, match_state, player_idx):
+        #     from scipy.stats import entropy
+        #     dice = np.array([match_state.area_num_dice[i] for i in match_state.player_areas[player_idx]])
+        #     if dice.sum() == 0:
+        #         return 0
+        #     probs = dice / dice.sum()
+        #     return entropy(probs)
+
+        # def attack_options(self, grid, match_state, player_idx):
+        #     count = 0
+        #     player_areas = match_state.player_areas[player_idx]
+        #     area_dice = match_state.area_num_dice
+        #     owner = match_state.area_players
+
+        #     for from_area in player_areas:
+        #         if area_dice[from_area] > 1:
+        #             for to_area in grid.areas[from_area].neighbors:
+        #                 if owner[to_area] != player_idx:
+        #                     count += 1
+        #     return count
 
 
 class ReplayBuffer:
