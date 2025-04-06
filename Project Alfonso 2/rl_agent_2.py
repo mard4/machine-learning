@@ -8,13 +8,13 @@ import random
 import os
 from collections import Counter
 
-MODEL_PATH = os.path.join("saved_models", "dicewars_rl_model_vsrandom_2.keras")
+MODEL_PATH = os.path.join("saved_models", "dicewars_rl_model_vsrandom_3.keras")
 
 class RLDicewarsAgent:
     def __init__(self):
         print("Initialized RL agent")
         self.grid = Grid()
-        self.input_dim = 22  
+        self.input_dim = 23  
         self.output_dim = 57  
         #self.model = self.build_model()
         self.load_model()
@@ -25,11 +25,12 @@ class RLDicewarsAgent:
             layers.Dense(512, activation='relu'),
             layers.BatchNormalization(),
             layers.Dense(256, activation='relu'),
+            layers.BatchNormalization(),
             layers.Dropout(0.2),
             layers.Dense(128, activation='relu'),
             layers.Dense(self.output_dim, activation='linear')
         ])
-        model.compile(optimizer=optimizers.Adam(learning_rate=1e-4), loss=MeanSquaredError())
+        model.compile(optimizer=optimizers.Adam(learning_rate=1e-9), loss=MeanSquaredError())
         return model
     
     def save_model(self, path=MODEL_PATH):
@@ -104,17 +105,20 @@ class RLDicewarsAgent:
         
         # descrittore
         b_strength = self.border_strength_ratio(grid, match_state)
+        adv = self.dice_advantage(match_state)
+
         
         ##state_vec = np.concatenate([dice, areas, clusters, max_dice_vec, min_dice_vec, enemy_borders])
         state_vec = np.concatenate([
-                    dice,
-                    areas,
-                    clusters,
-                    max_dice_vec,
-                    min_dice_vec,
-                    enemy_borders,
-                    [b_strength]    # se b_strength è un singolo valore
-                    ])
+            dice,
+            areas,
+            clusters,
+            max_dice_vec,
+            min_dice_vec,
+            enemy_borders,
+            [b_strength],
+            [adv]
+        ])
         return state_vec
     
 
@@ -242,6 +246,29 @@ class RLDicewarsAgent:
                     count += 1
 
         return total / count if count > 0 else 0
+    
+    def dice_advantage(self, match_state):
+        """
+        Calcola un indicatore che misura quanto sei in vantaggio
+        (o in svantaggio) rispetto alla media dei dadi degli avversari.
+        Restituisce un singolo float normalizzato.
+        """
+        my_player = match_state.player
+        my_dice = match_state.player_num_dice[my_player]
+        total_dice = sum(match_state.player_num_dice)
+        others_total = total_dice - my_dice
+        others_count = len(match_state.player_num_dice) - 1
+        
+        if others_count > 0:
+            others_avg = others_total / others_count
+        else:
+            # Caso limite, se fossi l'unico giocatore (poco probabile)
+            others_avg = my_dice
+
+        # Normalizziamo la differenza su un fattore empirico (es: 15)
+        advantage = (my_dice - others_avg) / 15.0
+        return advantage
+
 
 
         # def dice_entropy(self, match_state, player_idx):

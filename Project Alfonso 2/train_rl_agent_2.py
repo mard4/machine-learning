@@ -16,15 +16,15 @@ from rl_agent_2 import RLDicewarsAgent, ReplayBuffer
 
 
 # Configurazione
-NUM_EPISODES = 200
-SAVE_MODEL_PATH = os.path.join("saved_models", "dicewars_rl_model_vsrandom_2.keras")
+NUM_EPISODES = 400
+SAVE_MODEL_PATH = os.path.join("saved_models", "dicewars_rl_model_vsrandom_3.keras")
 os.makedirs(os.path.dirname(SAVE_MODEL_PATH), exist_ok=True)
 
 # Parametri di training
 BUFFER_SIZE = 1000
 BATCH_SIZE = 128
 TRAIN_EVERY = 5  # Allena il modello ogni n episodi
-EVAL_EVERY = 50  # Valuta l'agente ogni n episodi
+EVAL_EVERY = 30  # Valuta l'agente ogni n episodi
 SAVE_EVERY = 30  # Salva il modello ogni n episodi
 
 # Creazione del buffer di replay e dell'agente RL
@@ -39,7 +39,8 @@ win_history = []
 reward_history = []
 moving_avg = deque(maxlen=100)  # Media mobile delle ultime 50 partite
 
-def calculate_step_reward(prev_state, new_state, player_idx):
+def calculate_step_reward(prev_state, new_state, player_idx,
+                          took_action, valid_actions):
     """
     Reward intermedio basato su: conquiste, perdite, crescita di dadi.
     """
@@ -65,11 +66,35 @@ def calculate_step_reward(prev_state, new_state, player_idx):
     
     # if prev_areas == new_areas and prev_cl == new_cl:
     #    reward -= 0.02
+    
+    ## descriptors
+    ## border
+    border_strength = state_vec[-2]
+    if border_strength < -2.0:
+        reward -= 2.0
+
+    # dice advantage
+    advantage = state_vec[-1]  
+    reward += advantage * 0.02
+    
+    ## penalty for losing areas
+    if new_areas < prev_areas:
+        lost = prev_areas - new_areas
+        reward -= 0.1 * lost  
+        
+    ## cluster we alreadu have it but more reward??    
+    if new_cl >= 10:
+        reward += 0.2  # “Bravo! Hai un territorio grosso”
+        
+    if not took_action and len(valid_actions) > 1:
+    # Aveva azioni ma ha passato
+        reward -= 0.5
+
 
     return reward
 
 def calculate_final_reward(winner, player_idx):
-    return 10.0 if winner == player_idx else -5.0
+    return 20.0 if winner == player_idx else -20.0
 
 def evaluate_agent(agent, num_matches=10, other_players=other_players):
     """
@@ -125,7 +150,13 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
         grid, state = match.step(action)
 
         if current_player == 0:
-            reward = calculate_step_reward(prev_state, state, player_idx=0)
+            valid_actions, _ = agent.get_valid_actions(grid, state)
+            took_action = action is not None
+
+    
+        if current_player == 0:
+            reward = calculate_step_reward(prev_state, state, player_idx=0,
+                                           took_action=took_action, valid_actions=valid_actions)
             done = match.winner != -1
             state_vec = agent.encode_state(grid, prev_state)
             next_state_vec = agent.encode_state(grid, state)
