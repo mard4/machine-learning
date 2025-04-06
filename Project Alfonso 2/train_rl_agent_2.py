@@ -16,23 +16,23 @@ from rl_agent_2 import RLDicewarsAgent, ReplayBuffer
 
 
 # Configurazione
-NUM_EPISODES = 1
-SAVE_MODEL_PATH = "D:/PhD utwente/courses/Machine learning/Exercises/dicewars-env-v1/saved_models/dicewars_rl_model.keras"
+NUM_EPISODES = 200
+SAVE_MODEL_PATH = os.path.join("saved_models", "dicewars_rl_model_vsrandom_2.keras")
 os.makedirs(os.path.dirname(SAVE_MODEL_PATH), exist_ok=True)
 
 # Parametri di training
 BUFFER_SIZE = 1000
 BATCH_SIZE = 128
-TRAIN_EVERY = 5  # Allena il modello ogni 10 episodi
-EVAL_EVERY = 50  # Valuta l'agente ogni 50 episodi
-SAVE_EVERY = 30  # Salva il modello ogni 30 episodi
+TRAIN_EVERY = 5  # Allena il modello ogni n episodi
+EVAL_EVERY = 50  # Valuta l'agente ogni n episodi
+SAVE_EVERY = 30  # Salva il modello ogni n episodi
 
 # Creazione del buffer di replay e dell'agente RL
 buffer = ReplayBuffer(max_size=BUFFER_SIZE)
 agent = RLDicewarsAgent()
 
 # Avversari (possono essere cambiati)
-other_players = [DefaultPlayer(), RandomPlayer(), DefaultPlayer()]
+other_players = [RandomPlayer(), RandomPlayer(), RandomPlayer()]
 
 # Variabili per il monitoraggio delle prestazioni
 win_history = []
@@ -161,4 +161,4 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
         eval_win_rate = evaluate_agent(agent, num_matches=10, other_players=other_players)
 
 # Stampa il tempo totale di esecuzione
-print("Training completed in", time.time() - start_time, "seconds")
+print("Training completed in", round(time.time() - start_time, 2), "seconds")

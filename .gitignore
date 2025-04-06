@@ -9,8 +9,7 @@ __pycache__/
 *.npy
 
 wandb/
-*.pt
-*.pth
+
 
 
 logs/
