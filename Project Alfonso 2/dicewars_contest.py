@@ -16,7 +16,7 @@ from dicewars.game import Game
 import sys
 
 # ADAPT TO THE PLAYERS IN YOUR CONTEST
-playerfiles = ['playergroupX', 'playergroupX', 'playergroupX', 'playergroupX']
+playerfiles = ['playergroup10', 'playergroup10', 'playergroup10', 'playergroup10']
 
 # CONSTANTS
 NUMBER_OF_GAMES = 2#2500  # The number of games that are played
