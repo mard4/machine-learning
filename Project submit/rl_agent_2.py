@@ -14,7 +14,7 @@ class RLDicewarsAgent:
     def __init__(self):
         print("Initialized RL agent")
         self.grid = Grid()
-        self.input_dim = 25  
+        self.input_dim = 21  
         self.output_dim = 57 #393  
         self.model = self.build_model()
         #self.load_model()
@@ -90,11 +90,11 @@ class RLDicewarsAgent:
         other_min = np.sort(other_min)
         min_dice_vec = np.concatenate(([my_min], other_min))
         
-        stock = np.array(match_state.player_num_stock)/8.0
-        my_stock = stock[match_state.player]
-        other_stock = np.delete(stock, match_state.player)
-        other_stock = np.sort(other_stock)
-        stock = np.concatenate(([my_stock], other_stock))
+        # stock = np.array(match_state.player_num_stock)/8.0
+        # my_stock = stock[match_state.player]
+        # other_stock = np.delete(stock, match_state.player)
+        # other_stock = np.sort(other_stock)
+        # stock = np.concatenate(([my_stock], other_stock))
         
         enemy_borders = 0
         
@@ -103,7 +103,7 @@ class RLDicewarsAgent:
         
         enemy_borders = np.array([enemy_borders / Grid.DEFAULT_MAX_NUM_AREAS])
 
-        state_vec = np.concatenate([dice, areas, clusters, max_dice_vec, min_dice_vec, stock, enemy_borders])
+        state_vec = np.concatenate([dice, areas, clusters, max_dice_vec, min_dice_vec, enemy_borders])
         return state_vec
     
 
