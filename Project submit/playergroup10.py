@@ -2,7 +2,7 @@ from dicewars import player
 from random import choice
 import tensorflow as tf
 from tensorflow import keras
-from rl_agent_2 import RLDicewarsAgent
+#from rl_agent_2 import RLDicewarsAgent
 
 import numpy as np
 from tensorflow.keras import layers, models, optimizers
@@ -13,7 +13,7 @@ import os
 from collections import Counter
 
 
-MODEL_PATH = os.path.join("saved_models", "dicewars_rl_model.keras")
+MODEL_PATH = os.path.join("saved_models", "dicewars_rl_model_group10.keras")
 
 
 class Player(player.Player):
