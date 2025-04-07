@@ -30,7 +30,7 @@ class RLDicewarsAgent:
             layers.Dense(128, activation='relu'),
             layers.Dense(self.output_dim, activation='linear')
         ])
-        model.compile(optimizer=optimizers.Adam(learning_rate=1e-1), loss=MeanSquaredError())
+        model.compile(optimizer=optimizers.Adam(learning_rate=1e-3), loss=MeanSquaredError())
         return model
     
     def save_model(self, path=MODEL_PATH):
@@ -121,17 +121,33 @@ class RLDicewarsAgent:
         ])
         return state_vec
     
-
     def decode_action(self, action_idx, grid, match_state):
-        
         valid_actions, _ = self.get_valid_actions(grid, match_state)
-        dice = (action_idx // 8 + 2, action_idx % 8 + 1)
         if action_idx == 56:
-            return None
+            return None  # Passa turno
+
+        # Ricostruzione (die1, die2) dal “codice”
+        die1 = action_idx // 8 + 2
+        die2 = action_idx % 8 + 1
+
+        # Cerchiamo nei valid_actions
         for action in valid_actions[1:]:
             from_area, to_area = action
-            if (match_state.area_num_dice[from_area] == dice[0] and match_state.area_num_dice[to_area] == dice[1]):
+            if (match_state.area_num_dice[from_area] == die1
+                and match_state.area_num_dice[to_area] == die2):
                 return action
+        # Se non trovato niente, di fatto passiamo (evita blocchi)
+        return None
+    # def decode_action(self, action_idx, grid, match_state):
+        
+    #     valid_actions, _ = self.get_valid_actions(grid, match_state)
+    #     dice = (action_idx // 8 + 2, action_idx % 8 + 1)
+    #     if action_idx == 56:
+    #         return None
+    #     for action in valid_actions[1:]:
+    #         from_area, to_area = action
+    #         if (match_state.area_num_dice[from_area] == dice[0] and match_state.area_num_dice[to_area] == dice[1]):
+    #             return action
             
     def encode_action(self, action, match_state):
         # Caso speciale: nessuna azione

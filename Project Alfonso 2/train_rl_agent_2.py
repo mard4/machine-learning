@@ -46,15 +46,17 @@ os.makedirs(os.path.dirname(SAVE_MODEL_PATH), exist_ok=True)
 BUFFER_SIZE = 1000
 BATCH_SIZE = 128
 TRAIN_EVERY = 10  # Allena il modello ogni n episodi
-EVAL_EVERY = 30  # Valuta l'agente ogni n episodi
+EVAL_EVERY = 40  # Valuta l'agente ogni n episodi
 SAVE_EVERY = 30  # Salva il modello ogni n episodi
+MAX_STEPS = 3000  # Limite di step per ogni match
+
 
 # Creazione del buffer di replay e dell'agente RL
 buffer = ReplayBuffer(max_size=BUFFER_SIZE)
 agent = RLDicewarsAgent()
 
 # Avversari (possono essere cambiati)
-other_players = [RandomPlayer(), RandomPlayer(), RandomPlayer()]
+other_players = [RandomPlayer(), AgressivePlayer(), RandomPlayer()]
 
 # Variabili per il monitoraggio delle prestazioni
 win_history = []
@@ -67,14 +69,18 @@ def calculate_step_reward(prev_state, new_state, player_idx,
     Reward intermedio basato su: conquiste, perdite, crescita di dadi.
     """
     reward = 0
+    
+    # calculate areas difference
     prev_areas = prev_state.player_num_areas[player_idx]
     new_areas = new_state.player_num_areas[player_idx]
     reward += (new_areas - prev_areas) * 0.04
 
+    # calculate dice difference
     prev_dice = prev_state.player_num_dice[player_idx]/prev_areas
     new_dice = new_state.player_num_dice[player_idx]/new_areas
     reward += (new_dice - prev_dice) * 0.04
     
+    # calculate cluster difference
     prev_cl = prev_state.player_max_size[player_idx]
     new_cl = new_state.player_max_size[player_idx]
     reward += (new_cl - prev_cl) * 0.04
@@ -115,10 +121,18 @@ def calculate_step_reward(prev_state, new_state, player_idx,
 
     return reward
 
-def calculate_final_reward(winner, player_idx):
-    return 20.0 if winner == player_idx else -20.0
+def calculate_final_reward(winner, player_idx, forced_end=False):
+    """
+    If forced_end=True, la partita è stata interrotta perché troppi step.
+    Possiamo dare una penalità extra a tutti in quell’evento.
+    """
+    if forced_end:
+        # Partita "annullata": piccolo malus generico
+        return -5.0
+    else:
+        return 10.0 if winner == player_idx else -5.0
 
-def evaluate_agent(agent, num_matches=10, other_players=other_players):
+def evaluate_agent(agent, num_matches=5, other_players=other_players):
     """
     Valuta l'agente in partite contro avversari fissi senza esplorazione (epsilon=0).
     """
@@ -129,7 +143,12 @@ def evaluate_agent(agent, num_matches=10, other_players=other_players):
         match = Match(game)
         grid, state = match.game.grid, match.state
 
+        step_count = 0
         while match.winner == -1:
+            step_count += 1
+            # Limite step anche in valutazione (opzionale)
+            if step_count >= MAX_STEPS:
+                break
             current_player = state.player
 
             if current_player == 0:
@@ -158,8 +177,17 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
     epsilon = max(0.01, 0.7 - episode / NUM_EPISODES)  # Decrescente
 
     history = []
+    
+    step_count = 0
+    forced_end = False  # Per capire se usciamo per eccesso di step
 
     while match.winner == -1:
+        step_count += 1
+        if step_count >= MAX_STEPS:
+            # Partita non finisce entro un tot di turni
+            forced_end = True
+            break
+        
         current_player = state.player
         prev_state = state  
 
@@ -173,7 +201,7 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
 
         if current_player == 0:
             valid_actions, _ = agent.get_valid_actions(grid, state)
-            took_action = action is not None
+            took_action = (action is not None)
 
     
         if current_player == 0:
@@ -191,6 +219,7 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
 
     # Calcola il reward finale e aggiorna le statistiche
     final_reward = calculate_final_reward(match.winner, player_idx=0)
+    step_rewards = [x[2] for x in history] if history else []
     episode_reward = sum(r for _, _, r in history) + final_reward
     reward_history.append(episode_reward)
     
@@ -205,8 +234,36 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
         round(episode_reward, 2),
         won,
         round(np.mean(moving_avg), 2),
-        "Agent" if match.winner == 0 else "Opponent"
+        #"Agent" if match.winner == 0 else "Opponent",
+        "Agent" if (match.winner == 0 and not forced_end) else "OpponentOrForced"
+
     ])
+    
+    
+    ## === logs
+    # Se abbiamo a disposizione l'ultimo state_vec dell'agente (non sempre salvato), puoi loggare border/adv
+    # Per semplicità, recuperiamo la dimensione dal replayBuffer[-1], se esiste:
+    if len(buffer.buffer) > 0:
+        last_exp = buffer.buffer[-1]
+        # last_exp: (state_vec, action_idx, action, reward, next_state_vec, done)
+        if last_exp[0] is not None and len(last_exp[0]) >= 2:
+            b_strength = round(last_exp[0][-2], 4)
+            advantage = round(last_exp[0][-1], 4)
+        else:
+            b_strength = 0.0
+            advantage = 0.0
+    else:
+        b_strength = 0.0
+        advantage = 0.0
+
+    descriptor_writer.writerow([
+        episode + 1,
+        b_strength,
+        advantage
+    ])
+    
+    
+    
     # Salva descrittori (solo se sei current_player == 0)
     descriptor_writer.writerow([
         episode + 1,
@@ -236,8 +293,12 @@ for episode in tqdm(range(NUM_EPISODES), desc="Episode"):
 
     # Valutazione periodica dell'agente
     if (episode + 1) % EVAL_EVERY == 0:
-        eval_win_rate = evaluate_agent(agent, num_matches=10, other_players=other_players)
-        evaluation_writer.writerow([episode + 1, round(eval_win_rate, 4)])
+        print(f"📊 Running evaluation at episode {episode + 1}")
+        try:
+            eval_win_rate = evaluate_agent(agent, num_matches=10, other_players=other_players)
+            evaluation_writer.writerow([episode + 1, round(eval_win_rate, 4)])
+        except Exception as e:
+            print(f"❌ Evaluation failed: {e}")
 
 # Stampa il tempo totale di esecuzione
 print("Training completed in", round(time.time() - start_time, 2), "seconds")
