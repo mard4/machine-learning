@@ -1,41 +1,45 @@
-# machine-learning
+# Dice Wars AI player
 
-Algoritmi: Q-learning, Deep Q-Network (DQN), PPO, ecc.
+The goal of this project is to build an artificial intelligence (AI) that is able to play the 'Dice Wars' game. To be able to do that we use Reinforcement Learning.
+<p align="center">
+  <a href="https://github.com/user-attachments/files/19937816/report_ml.pdf">
+    <img src="https://github.com/user-attachments/assets/8a51d1fe-2533-43ab-a182-ae7663aabfd3" width="400px"><br>
+    <b>Report</b>
+  </a>
+</p>
 
-NOTA: Ricordarsi di modificare i path di salvataggio del modello in training ed nel codice agent.
 
-### 🔁 **Panoramica Generale del Progetto**
-L'obiettivo è sviluppare un **agente intelligente (Player)** in grado di **giocare e vincere a Dicewars**, usando un approccio di **Reinforcement Learning** (nessun dataset, solo esperienza tramite simulazione delle partite).
+# Dice Wars
 
-#### 🧠 **Agente RL**
-  - **Stato** = `grid` + `state`: informazioni sul gioco in corso.
-  - **Azione** = coppia (from_area, to_area) o `None` (fine turno).
-  - **Reward** = lo definisci tu, ad esempio:
-    - +1 per una conquista di territorio
-    - +5 per una vittoria
-    - -1 per perdita di territorio
-    - 0 altrimenti
-   
-  in `rl_agent.py`
-
-#### 🧪 **Crea l’ambiente di training**
-- `basic_dicewars.py` o `dicewars_contest.py` come loop di simulazione.
-- Per ogni turno:
-  1. Osserva `state`
-  2. Seleziona azione (`get_attack_areas`)
-  3. Passa l’azione a `match.step(action)`
-  4. Ottieni nuovo stato e valuta il reward
-  5. Allenati sul reward
-
-> 🔁 Ripeti per molte partite (es. 1000+) per migliorare la strategia del tuo agente.
-
-in `rl_training.py`
+Dice Wars is a turn-based strategy game where players aim to conquer all territories using dice.  
+Each player takes turns attacking neighboring enemy areas from their own territories that have more than one die.  
+Both attacker and defender roll all their dice — the player with the higher total wins.
 
 ---
 
-#### ⚙️ **Ottimizza e Valida**
-- Allena e registra metriche:
-  - Percentuale di vittorie
-  - Progressione del reward
-- Modifica iperparametri (learning rate, gamma, ecc.)
-- Testa contro altri agenti: `AgressivePlayer`, `DefaultPlayer`, ecc. (o anche contro se stesso?)
+# AI Agent
+
+Our agent for Dice Wars follows a Deep Q-Learning (DQN) approach, illustrated in the figure below.
+
+At the heart of the agent is a neural network that learns to approximate the Q-value function, **Q(s, a)**, which estimates the long-term expected reward of taking an action **a** in a given state **s**, assuming the agent acts optimally from that point forward.
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/ab18ef37-d033-4614-bbdb-b57c45fa77e7" width="500px">
+</p>
+
+The choice of a DQN was motivated by the structure of Dice Wars: a turn-based game with a discrete and sequential environment.  
+The game involves a finite number of moves per turn, with discrete actions represented by "attack" or "end turn" decisions, and clearly defined game states (the board grid and match status).
+
+This structure makes Q-learning a natural fit, as it thrives in discrete environments where each step depends heavily on previous choices.
+
+---
+
+## Results
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/4a9092b3-0b8c-45da-a556-36362838f65c" width="450px">
+</p>
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/a9924a7f-ad23-44af-9a32-321aa475cdb0" width="450px">
+</p>
